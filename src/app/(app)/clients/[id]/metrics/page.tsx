@@ -1,15 +1,13 @@
-import {
-  ResizablePanel,
-  ResizablePanelGroup,
-} from "@/components/ui/resizable"
+// app/clients/[id]/metrics/page.tsx
+
 import { createClient } from '@/lib/supabase/server'
-import { MetricsSummary } from "@/components/clients/metrics/metrics-summary"
-import { MetricsOverviewChart } from '@/components/clients/metrics/metrics-overview-chart';
+import { MetricsPageClient } from '@/components/clients/metrics/metrics-page'
+import { Suspense } from 'react'
 
 export default async function MetricPage({ params }: { params: { id: string } }) {
-  
   const supabase = await createClient()
-  const { id } = await params;
+  const resolvedParams = await params
+  const id = resolvedParams.id
 
   // First check for client-specific metric preferences
   const { data: clientMetricPreferences } = await supabase
@@ -129,23 +127,12 @@ export default async function MetricPage({ params }: { params: { id: string } })
   metricsHistoricalData.sort((a, b) => a.displayOrder - b.displayOrder);
 
   return (
-   <ResizablePanelGroup
-      direction="horizontal"
-    >
-      <ResizablePanel defaultSize={30}>
-        <div className="h-full p-6 border-r-2">
-          <MetricsSummary metrics={metricsData} clientId={id} />
-        </div>
-      </ResizablePanel>
-      <ResizablePanel defaultSize={70}>
-        <div className="p-6 w-full grid grid-cols-2 gap-6">
-          {metricsHistoricalData.map((metric) => (
-            <div key={metric.id}>
-              <MetricsOverviewChart metric={metric}  />
-            </div>
-          ))}
-        </div>
-      </ResizablePanel>
-    </ResizablePanelGroup>
+    <Suspense fallback={<div>Loading metrics...</div>}>
+      <MetricsPageClient 
+        metricsData={metricsData} 
+        metricsHistoricalData={metricsHistoricalData} 
+        clientId={id} 
+      />
+    </Suspense>
   )
 }

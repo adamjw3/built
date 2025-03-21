@@ -21,12 +21,16 @@ type MetricEntry = {
 }
 type MetricsOverviewChartProps = {
   metric: MetricEntry
+  onSelect: (metric: MetricEntry) => void
 }
-export function MetricsOverviewChart({ metric }: MetricsOverviewChartProps ) {
+export function MetricsOverviewChart({ metric, onSelect }: MetricsOverviewChartProps ) {
   // Make sure we have data to display
   if (!metric || !metric.data || metric.data.length === 0) {
     return (
-      <Card className="border flex-1 border-blue-200 rounded-lg overflow-hidden">
+      <Card 
+        className="border flex-1 border-blue-200 rounded-lg overflow-hidden cursor-pointer hover:shadow-md transition-shadow"
+        onClick={() => onSelect(metric)}
+      >
         <CardHeader className="pb-2">
           <CardTitle>{metric?.name || "No data"}</CardTitle>
           <div className="text-3xl font-semibold text-slate-700">
@@ -69,7 +73,10 @@ export function MetricsOverviewChart({ metric }: MetricsOverviewChartProps ) {
   }
 
   return (
-    <Card className="border flex-1 border-blue-200 rounded-lg overflow-hidden">
+    <Card 
+      className="border flex-1 border-blue-200 rounded-lg overflow-hidden cursor-pointer hover:shadow-md transition-shadow"
+      onClick={() => onSelect(metric)}
+    >
       <CardHeader className="pb-2">
         <CardTitle className="text-gray-700">{metric.name}</CardTitle>
         <div>

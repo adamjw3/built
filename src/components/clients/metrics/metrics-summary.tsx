@@ -38,15 +38,18 @@ type MetricEntry = {
 type MetricsSummaryProps = {
   metrics: MetricEntry[]
   clientId: string
+  historicalMetrics: Array<any>
+  onSelectMetric: (metric: any) => void
 }
 
-export function MetricsSummary({ metrics, clientId }: MetricsSummaryProps) {
+export function MetricsSummary({ metrics, clientId, historicalMetrics, onSelectMetric }: MetricsSummaryProps) {
   const [isOpen, setIsOpen] = useState(true)
   const [isDragging, setIsDragging] = useState(false)
   const [orderedMetrics, setOrderedMetrics] = useState<MetricEntry[]>([])
   const [isSaving, setIsSaving] = useState(false)
   const dragItem = useRef<number | null>(null)
   const dragOverItem = useRef<number | null>(null)
+  const mouseDownTime = useRef<number>(0)
   const supabase = createClient()
   const router = useRouter()
   
@@ -61,6 +64,7 @@ export function MetricsSummary({ metrics, clientId }: MetricsSummaryProps) {
   }, [metrics])
   
   const handleDragStart = (index: number) => {
+    mouseDownTime.current = Date.now()
     dragItem.current = index
     setIsDragging(true)
   }
@@ -108,15 +112,12 @@ export function MetricsSummary({ metrics, clientId }: MetricsSummaryProps) {
     
     try {
       // Prepare the data for bulk upsert
-      console.log("here");
       const preferencesData = metricsToSave.map(metric => ({
         client_id: clientId,
         metric_id: metric.id,
         display_order: metric.displayOrder,
         is_visible: metric.isVisible ?? true // Maintain current visibility
       }))
-
-      console.log("preferencesData", preferencesData)
       
       // Delete existing preferences
       await supabase
@@ -139,6 +140,10 @@ export function MetricsSummary({ metrics, clientId }: MetricsSummaryProps) {
     } finally {
       setIsSaving(false)
     }
+  }
+
+  const handleRowClick = (metric) => {
+      onSelectMetric(metric)
   }
   
   const metricsCount = orderedMetrics.length
@@ -174,13 +179,14 @@ export function MetricsSummary({ metrics, clientId }: MetricsSummaryProps) {
                     className={cn(
                       !metric.value && "bg-blue-50",
                       isDragging && dragItem.current === index && "opacity-30",
-                      "cursor-move"
+                      "cursor-move hover:bg-blue-50"
                     )}
                     draggable={true}
                     onDragStart={() => handleDragStart(index)}
                     onDragEnter={() => handleDragEnter(index)}
                     onDragEnd={handleDragEnd}
                     onDragOver={(e) => e.preventDefault()}
+                    onClick={() => handleRowClick(metric)}
                   >
                     <TableCell className="w-10">
                       <GripVertical className="h-5 w-5 text-gray-400" />

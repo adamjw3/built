@@ -1,7 +1,6 @@
 "use client"
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { useState, useEffect } from "react"
 import { useToast } from "@/hooks/use-toast"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -26,6 +25,7 @@ import {
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import * as z from "zod"
+import {DEFAULT_METRICS} from "@/constants"
 
 // Create form schema with validation
 const formSchema = z.object({
@@ -46,9 +46,34 @@ interface ClientFormProps {
 }
 
 export function ClientForm({ onSuccess }: ClientFormProps) {
-  const router = useRouter()
   const { toast } = useToast()
   const [isLoading, setIsLoading] = useState(false)
+  const [metricDefinitions, setMetricDefinitions] = useState<any[]>([])
+  
+  // Fetch metric definitions on component mount
+  useEffect(() => {
+    const fetchMetricDefinitions = async () => {
+      try {
+        const supabase = createClient();
+        const { data, error } = await supabase
+          .from('metric_definitions')
+          .select('*')
+          .order('name');
+          
+        if (error) {
+          throw error;
+        }
+        
+        if (data) {
+          setMetricDefinitions(data);
+        }
+      } catch (error) {
+        console.error("Error fetching metric definitions:", error);
+      }
+    };
+    
+    fetchMetricDefinitions();
+  }, []);
   
   // Initialize form with react-hook-form
   const form = useForm<ClientFormValues>({
@@ -62,6 +87,23 @@ export function ClientForm({ onSuccess }: ClientFormProps) {
       sendInvitation: false
     },
   })
+
+  // Get ordered metric IDs based on priority
+  const getOrderedMetricIds = () => {
+    // Clone the array to avoid modifying the original
+    const metrics = [...metricDefinitions];
+    const orderedIds = [];
+    
+    // First add priority metrics in specified order
+    DEFAULT_METRICS.forEach(priorityName => {
+      const priorityMetric = metrics.find(m => m.name === priorityName);
+      if (priorityMetric) {
+        orderedIds.push(priorityMetric.id);
+      }
+    });
+    
+    return orderedIds;
+  };
 
   const onSubmit = async (data: ClientFormValues) => {
     setIsLoading(true)
@@ -87,6 +129,8 @@ export function ClientForm({ onSuccess }: ClientFormProps) {
             client_type: data.clientType,
             assigned_to: data.assignedTo,
             user_id: userData.user.id,
+            // Explicitly set updated_at to ensure proper sorting
+            updated_at: new Date().toISOString()
           },
         ])
         .select()
@@ -96,6 +140,29 @@ export function ClientForm({ onSuccess }: ClientFormProps) {
         throw error
       }
 
+      // Set up client metric preferences with default order
+      if (client && metricDefinitions.length > 0) {
+        // Get ordered metric IDs
+        const orderedMetricIds = getOrderedMetricIds();
+        
+        // Prepare the data for client_metric_preferences
+        const metricPreferencesData = orderedMetricIds.map((metricId, index) => ({
+          client_id: client.id,
+          metric_id: metricId,
+          display_order: index,
+          is_visible: true
+        }));
+
+        // Insert the metric preferences
+        const { error: preferencesError } = await supabase
+          .from('client_metric_preferences')
+          .insert(metricPreferencesData);
+
+        if (preferencesError) {
+          console.error("Error setting metric preferences:", preferencesError);
+          // We'll continue anyway even if preferences fail
+        }
+      }
 
       if (data.sendInvitation) {
         // You could implement email sending here
@@ -114,9 +181,6 @@ export function ClientForm({ onSuccess }: ClientFormProps) {
       if (onSuccess) {
         onSuccess()
       }
-
-      router.push('/clients')
-      router.refresh()
     } catch (error) {
       console.error(error)
       toast({

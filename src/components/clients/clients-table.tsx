@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
@@ -18,16 +18,26 @@ import {
   ArrowUpDown,
   MessageSquare
 } from "lucide-react"
+import { ClientActions } from "@/components/clients/client-actions";
+
 import { cn } from "@/lib/utils"
 
 export function ClientsTable({ initialClients }) {
   const [clients, setClients] = useState(initialClients)
   const [filteredClients, setFilteredClients] = useState(initialClients)
+  const [selectedClients, setSelectedClients] = useState([]);
   const [sortColumn, setSortColumn] = useState("name")
   const [sortDirection, setSortDirection] = useState("asc")
   const [categoryFilter, setCategoryFilter] = useState("all")
   const [statusFilter, setStatusFilter] = useState("all")
   const [searchQuery, setSearchQuery] = useState("")
+
+  // Update state when initialClients prop changes
+  useEffect(() => {
+    setClients(initialClients)
+    // Re-apply current filters to the new data
+    applyFilters(categoryFilter, statusFilter, searchQuery, initialClients)
+  }, [initialClients])
 
   // Handle sort column click
   const handleSortClick = (column) => {
@@ -39,7 +49,6 @@ export function ClientsTable({ initialClients }) {
     }
   }
 
-  // Handle filter and search changes
   const handleCategoryFilterChange = (value) => {
     setCategoryFilter(value)
     applyFilters(value, statusFilter, searchQuery)
@@ -57,8 +66,8 @@ export function ClientsTable({ initialClients }) {
   }
 
   // Apply all filters
-  const applyFilters = (category, status, query) => {
-    let filtered = [...initialClients]
+  const applyFilters = (category, status, query, clientsData = clients) => {
+    let filtered = [...clientsData]
     
     // Apply category filter
     if (category !== "all") {
@@ -85,7 +94,6 @@ export function ClientsTable({ initialClients }) {
     setFilteredClients(filtered)
   }
 
-  // Sort the clients
   const sortedClients = [...filteredClients].sort((a, b) => {
     const aValue = a[sortColumn]
     const bValue = b[sortColumn]
@@ -107,7 +115,6 @@ export function ClientsTable({ initialClients }) {
     return 0
   })
 
-  // Get sort icon
   const getSortIcon = (column) => {
     if (sortColumn !== column) {
       return <ArrowUpDown className="h-4 w-4 ml-1" />
@@ -115,6 +122,14 @@ export function ClientsTable({ initialClients }) {
     return sortDirection === "asc" 
       ? <ChevronUp className="h-4 w-4 ml-1" /> 
       : <ChevronDown className="h-4 w-4 ml-1" />
+  }
+
+  const checkHandler = (checked, client) => {
+    if (checked) {
+      setSelectedClients([...selectedClients, client]);
+    } else {
+      setSelectedClients(selectedClients.filter(id => id !== client));
+    }
   }
 
   return (
@@ -141,6 +156,7 @@ export function ClientsTable({ initialClients }) {
             <SelectItem value="connected">Connected</SelectItem>
             <SelectItem value="pending">Pending</SelectItem>
             <SelectItem value="offline">Offline</SelectItem>
+            <SelectItem value="archive">Archive</SelectItem>
           </SelectContent>
         </Select>
         
@@ -150,6 +166,9 @@ export function ClientsTable({ initialClients }) {
           value={searchQuery}
           onChange={handleSearchChange}
         />
+        {selectedClients.length > 0 && (
+            <ClientActions selectedClients={selectedClients} setSelectedClients={setSelectedClients}/>
+        )}
       </div>
 
       <div className="w-full overflow-auto">
@@ -222,7 +241,7 @@ export function ClientsTable({ initialClients }) {
               sortedClients.map((client) => (
                 <tr key={client.id} className="border-b hover:bg-slate-50">
                   <td className="p-3">
-                    <Checkbox />
+                    <Checkbox onCheckedChange={(checked) => checkHandler(checked, client.id)}/>
                   </td>
                   <td className="p-3">
                     <div className="flex items-center space-x-3">
