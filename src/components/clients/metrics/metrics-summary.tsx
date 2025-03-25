@@ -22,8 +22,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { cn } from "@/lib/utils"
-import { createClient } from "@/lib/supabase/client"
-import { useRouter } from "next/navigation"
+import { useUpdateMetricPreferences } from "@/lib/hooks/use-metrics"
 
 type MetricEntry = {
   id: string
@@ -46,12 +45,12 @@ export function MetricsSummary({ metrics, clientId, historicalMetrics, onSelectM
   const [isOpen, setIsOpen] = useState(true)
   const [isDragging, setIsDragging] = useState(false)
   const [orderedMetrics, setOrderedMetrics] = useState<MetricEntry[]>([])
-  const [isSaving, setIsSaving] = useState(false)
   const dragItem = useRef<number | null>(null)
   const dragOverItem = useRef<number | null>(null)
   const mouseDownTime = useRef<number>(0)
-  const supabase = createClient()
-  const router = useRouter()
+  
+  // Use React Query mutation hook for updating preferences
+  const updatePreferences = useUpdateMetricPreferences(clientId)
   
   // Initialize ordered metrics from props
   useEffect(() => {
@@ -102,48 +101,18 @@ export function MetricsSummary({ metrics, clientId, historicalMetrics, onSelectM
     setIsDragging(false)
     
     // Automatically save the new order
-    await savePreferences(reorderedMetrics)
+    savePreferences(reorderedMetrics)
   }
   
-  const savePreferences = async (metricsToSave = orderedMetrics) => {
-    if (!clientId || isSaving) return
+  const savePreferences = (metricsToSave = orderedMetrics) => {
+    if (!clientId || updatePreferences.isPending) return
     
-    setIsSaving(true)
-    
-    try {
-      // Prepare the data for bulk upsert
-      const preferencesData = metricsToSave.map(metric => ({
-        client_id: clientId,
-        metric_id: metric.id,
-        display_order: metric.displayOrder,
-        is_visible: metric.isVisible ?? true // Maintain current visibility
-      }))
-      
-      // Delete existing preferences
-      await supabase
-        .from('client_metric_preferences')
-        .delete()
-        .eq('client_id', clientId)
-      
-      // Insert new preferences
-      const { error } = await supabase
-        .from('client_metric_preferences')
-        .insert(preferencesData)
-      
-      if (error) throw error
-      
-      // Refresh the page to show the new order
-      router.refresh()
-      
-    } catch (error) {
-      console.error('Error saving preferences:', error)
-    } finally {
-      setIsSaving(false)
-    }
+    // Use React Query mutation to update preferences
+    updatePreferences.mutate(metricsToSave)
   }
 
   const handleRowClick = (metric) => {
-      onSelectMetric(metric)
+    onSelectMetric(metric)
   }
   
   const metricsCount = orderedMetrics.length
@@ -163,45 +132,49 @@ export function MetricsSummary({ metrics, clientId, historicalMetrics, onSelectM
         </CollapsibleTrigger>
         <CollapsibleContent>
           <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow className="hover:bg-transparent">
-                  <TableHead className="w-10 text-gray-500"></TableHead>
-                  <TableHead className="text-gray-500">NAME</TableHead>
-                  <TableHead className="text-gray-500">VALUE</TableHead>
-                  <TableHead className="text-gray-500">LAST UPDATE</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {orderedMetrics.map((metric, index) => (
-                  <TableRow 
-                    key={metric.id}
-                    className={cn(
-                      !metric.value && "bg-blue-50",
-                      isDragging && dragItem.current === index && "opacity-30",
-                      "cursor-move hover:bg-blue-50"
-                    )}
-                    draggable={true}
-                    onDragStart={() => handleDragStart(index)}
-                    onDragEnter={() => handleDragEnter(index)}
-                    onDragEnd={handleDragEnd}
-                    onDragOver={(e) => e.preventDefault()}
-                    onClick={() => handleRowClick(metric)}
-                  >
-                    <TableCell className="w-10">
-                      <GripVertical className="h-5 w-5 text-gray-400" />
-                    </TableCell>
-                    <TableCell className="font-medium py-6">{metric.name}</TableCell>
-                    <TableCell className="py-6">
-                      {metric.value ? `${metric.value}${metric.unit ? ` ${metric.unit}` : ''}` : "—"}
-                    </TableCell>
-                    <TableCell className="text-gray-500 py-6">
-                      {metric.lastUpdate || "—"}
-                    </TableCell>
+            {updatePreferences.isPending ? (
+              <div className="p-4 text-center">Saving changes...</div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow className="hover:bg-transparent">
+                    <TableHead className="w-10 text-gray-500"></TableHead>
+                    <TableHead className="text-gray-500">NAME</TableHead>
+                    <TableHead className="text-gray-500">VALUE</TableHead>
+                    <TableHead className="text-gray-500">LAST UPDATE</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {orderedMetrics.map((metric, index) => (
+                    <TableRow 
+                      key={metric.id}
+                      className={cn(
+                        !metric.value && "bg-blue-50",
+                        isDragging && dragItem.current === index && "opacity-30",
+                        "cursor-move hover:bg-blue-50"
+                      )}
+                      draggable={true}
+                      onDragStart={() => handleDragStart(index)}
+                      onDragEnter={() => handleDragEnter(index)}
+                      onDragEnd={handleDragEnd}
+                      onDragOver={(e) => e.preventDefault()}
+                      onClick={() => handleRowClick(metric)}
+                    >
+                      <TableCell className="w-10">
+                        <GripVertical className="h-5 w-5 text-gray-400" />
+                      </TableCell>
+                      <TableCell className="font-medium py-6">{metric.name}</TableCell>
+                      <TableCell className="py-6">
+                        {metric.value ? `${metric.value}${metric.unit ? ` ${metric.unit}` : ''}` : "—"}
+                      </TableCell>
+                      <TableCell className="text-gray-500 py-6">
+                        {metric.lastUpdate || "—"}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
           </CardContent>
         </CollapsibleContent>
       </Collapsible>

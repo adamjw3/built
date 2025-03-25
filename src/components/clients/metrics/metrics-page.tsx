@@ -8,18 +8,24 @@ import {
 import { MetricsSummary } from "@/components/clients/metrics/metrics-summary"
 import { MetricsOverviewChart } from '@/components/clients/metrics/metrics-overview-chart'
 import { MetricsDetail } from '@/components/clients/metrics/metrics-detail'
+import { useClientMetrics } from '@/lib/hooks/use-metrics'
 
-export function MetricsPageClient({ metricsData, metricsHistoricalData, clientId }) {
+export function MetricsPageClient({ clientId }) {
   const [selectedMetric, setSelectedMetric] = useState(null)
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
+  
+  // Fetch metrics data using React Query
+  const { data, isLoading, isError } = useClientMetrics(clientId)
+  const metricsData = data?.metricsData || []
+  const metricsHistoricalData = data?.metricsHistoricalData || []
 
   // Initialize selectedMetric based on URL query parameter on component mount or when searchParams change
   useEffect(() => {
     const metricParam = searchParams.get('metric')
     
-    if (metricParam) {
+    if (metricParam && metricsHistoricalData.length > 0) {
       // Find the metric with a matching name or ID
       const foundMetric = metricsHistoricalData.find(
         m => m.name.toLowerCase() === metricParam.toLowerCase() || m.id.toString() === metricParam
@@ -40,7 +46,6 @@ export function MetricsPageClient({ metricsData, metricsHistoricalData, clientId
   }, [searchParams, metricsHistoricalData, pathname, router])
 
   const handleSelectMetric = (metric) => {
-    
     setSelectedMetric(metric)
     
     // Create new URLSearchParams object based on current params
@@ -64,6 +69,14 @@ export function MetricsPageClient({ metricsData, metricsHistoricalData, clientId
     const newPath = queryString ? `${pathname}?${queryString}` : pathname
     
     router.push(newPath, { scroll: false })
+  }
+
+  if (isLoading) {
+    return <div className="flex justify-center items-center h-screen">Loading metrics data...</div>
+  }
+
+  if (isError) {
+    return <div className="flex justify-center items-center h-screen text-red-500">Failed to load metrics data</div>
   }
 
   return (

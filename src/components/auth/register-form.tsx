@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import * as z from "zod"
 import { Button } from "@/components/ui/button"
-import { useToast } from "@/hooks/use-toast"
+import { useRegister } from "@/lib/hooks/use-auth"
 import {
   Form,
   FormControl,
@@ -14,8 +14,7 @@ import {
   FormMessage,
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
-import { createBrowserClient } from '@supabase/ssr'
-import { useRouter } from 'next/navigation'
+
 
 const formSchema = z.object({
   email: z.string().email({
@@ -36,13 +35,7 @@ const formSchema = z.object({
 })
 
 export function RegisterForm() {
-  const { toast } = useToast()
-  const router = useRouter()
-  
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
+  const register = useRegister();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -56,41 +49,7 @@ export function RegisterForm() {
   })
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    try {
-      const { data, error } = await supabase.auth.signUp({
-        email: values.email,
-        password: values.password,
-        options: {
-          data: {
-            business_name: values.businessName,
-            first_name: values.firstName,
-            last_name: values.lastName,
-          }
-        }
-      })
-
-      if (error) {
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: error.message,
-        })
-        return
-      }
-
-      toast({
-        title: "Registration successful",
-        description: "Please check your email to verify your account.",
-      })
-
-      router.push('/login')
-    } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Something went wrong. Please try again.",
-      })
-    }
+    register.mutate(values);
   }
 
   return (

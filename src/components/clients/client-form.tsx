@@ -1,12 +1,10 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useToast } from "@/hooks/use-toast"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Checkbox } from "@/components/ui/checkbox"
-import { createClient } from "@/lib/supabase/client"
 import { 
   Select,
   SelectContent,
@@ -25,7 +23,9 @@ import {
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import * as z from "zod"
-import {DEFAULT_METRICS} from "@/constants"
+import { useCreateClient } from "@/lib/hooks/use-clients"
+import { DEFAULT_METRICS } from "@/constants"
+import { createClient } from "@/lib/supabase/client" // Import from the correct path
 
 // Create form schema with validation
 const formSchema = z.object({
@@ -46,15 +46,14 @@ interface ClientFormProps {
 }
 
 export function ClientForm({ onSuccess }: ClientFormProps) {
-  const { toast } = useToast()
-  const [isLoading, setIsLoading] = useState(false)
   const [metricDefinitions, setMetricDefinitions] = useState<any[]>([])
+  const createClientMutation = useCreateClient()
   
   // Fetch metric definitions on component mount
   useEffect(() => {
     const fetchMetricDefinitions = async () => {
       try {
-        const supabase = createClient();
+        const supabase = createClient(); // Remove the await as it's not an async function
         const { data, error } = await supabase
           .from('metric_definitions')
           .select('*')
@@ -105,92 +104,31 @@ export function ClientForm({ onSuccess }: ClientFormProps) {
     return orderedIds;
   };
 
-  const onSubmit = async (data: ClientFormValues) => {
-    setIsLoading(true)
-
-    try {
-      const supabase = createClient();
-
-      // First check if the user is authenticated
-      const { data: userData, error: authError } = await supabase.auth.getUser()
-      if (authError || !userData?.user) {
-        throw new Error('You must be logged in to create a client')
-      }
-
-      // Insert client data directly into Supabase
-      const { data: client, error } = await supabase
-        .from('clients')
-        .insert([
-          {
-            name: `${data.firstName} ${data.lastName}`,
-            first_name: data.firstName,
-            last_name: data.lastName,
-            email: data.email,
-            client_type: data.clientType,
-            assigned_to: data.assignedTo,
-            user_id: userData.user.id,
-            // Explicitly set updated_at to ensure proper sorting
-            updated_at: new Date().toISOString()
-          },
-        ])
-        .select()
-        .single()
-
-      if (error) {
-        throw error
-      }
-
-      // Set up client metric preferences with default order
-      if (client && metricDefinitions.length > 0) {
-        // Get ordered metric IDs
-        const orderedMetricIds = getOrderedMetricIds();
+  const onSubmit = (data: ClientFormValues) => {
+    // Create client data
+    const clientData = {
+      firstName: data.firstName,
+      lastName: data.lastName,
+      email: data.email,
+      clientType: data.clientType,
+      assignedTo: data.assignedTo,
+      sendInvitation: data.sendInvitation,
+      metricDefinitions,
+      orderedMetricIds: getOrderedMetricIds()
+    }
+    
+    // Use React Query mutation
+    createClientMutation.mutate(clientData, {
+      onSuccess: () => {
+        // Reset form
+        form.reset()
         
-        // Prepare the data for client_metric_preferences
-        const metricPreferencesData = orderedMetricIds.map((metricId, index) => ({
-          client_id: client.id,
-          metric_id: metricId,
-          display_order: index,
-          is_visible: true
-        }));
-
-        // Insert the metric preferences
-        const { error: preferencesError } = await supabase
-          .from('client_metric_preferences')
-          .insert(metricPreferencesData);
-
-        if (preferencesError) {
-          console.error("Error setting metric preferences:", preferencesError);
-          // We'll continue anyway even if preferences fail
+        // Call onSuccess callback if provided
+        if (onSuccess) {
+          onSuccess()
         }
       }
-
-      if (data.sendInvitation) {
-        // You could implement email sending here
-        // For example with Supabase Edge Functions or another service
-        console.log(`Email invitation would be sent to ${data.email}`)
-      }
-
-      toast({
-        title: "Success",
-        description: data.sendInvitation 
-          ? "Client created and invitation sent" 
-          : "Client created successfully",
-      })
-
-      // Call onSuccess callback if provided
-      if (onSuccess) {
-        onSuccess()
-      }
-    } catch (error) {
-      console.error(error)
-      toast({
-        title: "Error",
-        description: "Failed to create client",
-        variant: "destructive",
-      })
-    } finally {
-      setIsLoading(false)
-    }
+    })
   }
 
   return (
@@ -324,9 +262,9 @@ export function ClientForm({ onSuccess }: ClientFormProps) {
           <Button
             type="submit"
             className="w-24"
-            disabled={isLoading}
+            disabled={createClientMutation.isPending}
           >
-            {isLoading ? "Creating..." : "Invite"}
+            {createClientMutation.isPending ? "Creating..." : "Invite"}
           </Button>
         </div>
       </form>

@@ -14,9 +14,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
-import { createClient } from "@/lib/supabase/client"
-import { useRouter } from "next/navigation"
-
+import { useClientActions } from "@/lib/hooks/use-clients"
 
 const menuItems = [
   {
@@ -29,38 +27,31 @@ const menuItems = [
   }
 ]
 
-export function ClientActions({selectedClients, setSelectedClients}) {
+export function ClientActions({ selectedClients, setSelectedClients }) {
   const [open, setOpen] = useState(false)
-  const supabase = createClient();
-  const router = useRouter()
-
+  const { deleteClients, archiveClients } = useClientActions()
 
   const onAction = async (action) => {
-    const { data: userData, error: authError } = await supabase.auth.getUser()
-    
-    if (authError || !userData?.user) {
-      throw new Error('You must be logged in')
+    if (action === "Delete") {
+      deleteClients.mutate(selectedClients, {
+        onSuccess: () => {
+          setSelectedClients([])
+          setOpen(false)
+        }
+      })
     }
 
-    if(action === "Delete") {
-      const { data, error } = await supabase
-        .from('clients')
-        .delete()
-        .in('id', selectedClients)
+    if (action === "Archive") {
+      archiveClients.mutate(selectedClients, {
+        onSuccess: () => {
+          setSelectedClients([])
+          setOpen(false)
+        }
+      })
     }
-
-    if(action === "Archive") {
-        const { data, error } = await supabase
-          .from('clients')
-          .update({ status: 'Archive' })
-          .in('id', selectedClients)
-    }
-
-    setSelectedClients([]);
-    router.refresh()
-  } 
+  }
  
- return (
+  return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button
@@ -68,8 +59,13 @@ export function ClientActions({selectedClients, setSelectedClients}) {
           role="combobox"
           aria-expanded={open}
           className="w-[200px] justify-between"
+          disabled={deleteClients.isPending || archiveClients.isPending}
         >
-          Actions
+          {deleteClients.isPending 
+            ? "Deleting..." 
+            : archiveClients.isPending 
+              ? "Archiving..." 
+              : "Actions"}
           <ChevronsUpDown className="opacity-50" />
         </Button>
       </PopoverTrigger>
@@ -77,15 +73,15 @@ export function ClientActions({selectedClients, setSelectedClients}) {
         <Command>
           <CommandList>
             <CommandGroup>
-              {menuItems.map((menuItems) => (
+              {menuItems.map((menuItem) => (
                 <CommandItem
-                  key={menuItems.value}
-                  value={menuItems.value}
+                  key={menuItem.value}
+                  value={menuItem.value}
                   onSelect={() => {
-                    onAction(menuItems.value)
+                    onAction(menuItem.value)
                   }}
                 >
-                  {menuItems.label}
+                  {menuItem.label}
                 </CommandItem>
               ))}
             </CommandGroup>
