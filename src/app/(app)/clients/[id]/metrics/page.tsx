@@ -1,6 +1,5 @@
-import { MetricsPageClient } from '@/components/clients/metrics/metrics-page'
 import { Suspense } from 'react'
-import { getSupabaseServer } from '@/lib/supabase/server'
+import { MetricsPageClient } from '@/components/clients/metrics/metrics-page'
 import { dehydrate, HydrationBoundary, QueryClient } from '@tanstack/react-query'
 import { metricsQueries } from '@/lib/queries/metrics'
 
