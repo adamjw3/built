@@ -8,7 +8,7 @@ import {
 import { MetricsSummary } from "@/components/clients/metrics/metrics-summary"
 import { MetricsOverviewChart } from '@/components/clients/metrics/metrics-overview-chart'
 import { MetricsDetail } from '@/components/clients/metrics/metrics-detail'
-import { useClientMetrics } from '@/lib/hooks/use-metrics'
+import { useClientMetrics } from '@/hooks/use-metrics'
 
 export function MetricsPageClient({ clientId }) {
   const [selectedMetric, setSelectedMetric] = useState(null)

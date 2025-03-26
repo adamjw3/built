@@ -22,7 +22,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { cn } from "@/lib/utils"
-import { useUpdateMetricPreferences } from "@/lib/hooks/use-metrics"
+import { useUpdateMetricPreferences } from "@/hooks/use-metrics"
 
 type MetricEntry = {
   id: string

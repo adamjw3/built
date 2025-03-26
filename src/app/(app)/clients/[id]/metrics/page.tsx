@@ -5,7 +5,9 @@ import { dehydrate, HydrationBoundary, QueryClient } from '@tanstack/react-query
 import { metricsQueries } from '@/lib/queries/metrics'
 
 export default async function MetricPage({ params }: { params: { id: string } }) {
-  const clientId = params.id
+  
+  const resolvedParams = await params;
+  const clientId = resolvedParams.id;
   
   // Initialize React Query client
   const queryClient = new QueryClient()

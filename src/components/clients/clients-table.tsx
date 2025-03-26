@@ -19,7 +19,7 @@ import {
   MessageSquare
 } from "lucide-react"
 import { ClientActions } from "@/components/clients/client-actions"
-import { useClients } from "@/lib/hooks/use-clients"
+import { useClients } from "@/hooks/use-clients"
 import { cn } from "@/lib/utils"
 
 export function ClientsTable() {

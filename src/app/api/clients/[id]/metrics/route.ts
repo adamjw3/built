@@ -6,7 +6,9 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const clientId = params.id
+    // Await params before using it
+    const resolvedParams = await params;
+    const clientId = resolvedParams.id;
     const supabase = await getSupabaseServer()
     
     // Get the current authenticated user

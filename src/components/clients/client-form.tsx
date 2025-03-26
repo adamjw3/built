@@ -23,7 +23,7 @@ import {
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import * as z from "zod"
-import { useCreateClient } from "@/lib/hooks/use-clients"
+import { useCreateClient } from "@/hooks/use-clients"
 import { DEFAULT_METRICS } from "@/constants"
 import { createClient } from "@/lib/supabase/client" // Import from the correct path
 

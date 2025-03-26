@@ -1,7 +1,7 @@
 'use client'
 
 import { SidebarMenuButton } from "@/components/ui/sidebar"
-import { useSignOut } from '@/lib/hooks/use-auth'
+import { useSignOut } from '@/hooks/use-auth'
 
 export function SignOut() {
   const signOut = useSignOut()

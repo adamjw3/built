@@ -14,7 +14,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
-import { useClientActions } from "@/lib/hooks/use-clients"
+import { useClientActions } from "@/hooks/use-clients"
 
 const menuItems = [
   {
