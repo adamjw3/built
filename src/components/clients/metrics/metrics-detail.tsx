@@ -22,6 +22,8 @@ type MetricDetailprops = {
 
 export function MetricsDetail() {
   return(
-    <div>Hi</div>
+    <div>
+      hi
+    </div>
   )
 }

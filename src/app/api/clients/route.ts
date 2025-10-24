@@ -128,13 +128,15 @@ export async function POST(request: NextRequest) {
     // Handle metric preferences if provided
     if (client && formData.metricDefinitions?.length > 0) {
       const orderedMetricIds = formData.orderedMetricIds || formData.metricDefinitions.map(m => m.id)
-      
+      console.log("orderedMetricIds", orderedMetricIds)
       const metricPreferencesData = orderedMetricIds.map((metricId, index) => ({
         client_id: client.id,
         metric_id: metricId,
         display_order: index,
         is_visible: true
       }))
+
+      console.log("metricPreferencesData", metricPreferencesData)
       
       const { error: preferencesError } = await supabase
         .from('client_metric_preferences')
@@ -158,7 +160,7 @@ export async function POST(request: NextRequest) {
 }
 
 // Helper function to format time ago
-function formatTimeAgo(dateString) {
+function formatTimeAgo(dateString: any) {
   if (!dateString) return '';
   
   const now = new Date();

@@ -48,4 +48,22 @@ export const metricsQueries = {
     
     return response.json();
   },
+
+
+  createMetric: async (clientData: any) => {
+    const response = await fetch('/api/clients', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(clientData),
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Failed to create client');
+    }
+    
+    return response.json();
+  },
 }

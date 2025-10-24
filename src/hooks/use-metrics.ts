@@ -67,3 +67,27 @@ export function useAddMetricValue(clientId: string) {
     }
   })
 }
+
+// Hook to add a new metric
+export function useCreateMetric(clientId: string) {
+  const { toast } = useToast()
+  const queryClient = useQueryClient()
+
+   return useMutation({
+    mutationFn: (data: any) => metricsQueries.createMetric(data),
+     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['clients', clientId, 'metrics'] })
+      toast({
+        title: "Success",
+        description: "New Metric created successfully",
+      })
+    },
+    onError: (error: any) => {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message || "Failed to create metric value",
+      })
+    }
+   })
+}

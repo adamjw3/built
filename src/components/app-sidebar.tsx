@@ -18,6 +18,16 @@ const items = [
     icon: Home,
   },
   {
+    title: "Exercises",
+    url: "/exercises",
+    icon: Home,
+  },
+  {
+    title: "Programs",
+    url: "/programs",
+    icon: Home,
+  },
+  {
     title: "Inbox",
     url: "#",
     icon: Inbox,

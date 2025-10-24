@@ -177,7 +177,8 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
-    const clientId = params.id
+    const resolvedParams = await params;
+    const clientId = resolvedParams.id;
     const supabase = await getSupabaseServer()
     
     // Get the current authenticated user
@@ -189,6 +190,8 @@ export async function POST(
         { status: 401 }
       )
     }
+
+   
     
     // Verify the client belongs to this user
     const { data: clientData, error: clientError } = await supabase
@@ -204,9 +207,15 @@ export async function POST(
         { status: 404 }
       )
     }
+
+    const requestBody = await request.json()
+
+    if(requestBody.metricsToSave) {
     
     // Get preferences data from request body
-    const { metricsToSave } = await request.json()
+    const { metricsToSave } = requestBody
+
+    console.log("metricsToSave", metricsToSave)
     
     if (!metricsToSave || !Array.isArray(metricsToSave)) {
       return NextResponse.json(
@@ -246,6 +255,33 @@ export async function POST(
         { error: 'Failed to update preferences' },
         { status: 400 }
       )
+    }
+  }
+
+    if(requestBody.CreatNewMetric) {
+
+    const formData = requestBody.CreatNewMetric;
+    
+    // Insert metric definition into Supabase
+    const { error } = await supabase
+      .from('metric_definitions')
+      .insert([
+        {
+          name: formData.name,
+          unit: formData.unit,
+          user_id: authData.user.id,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        },
+      ])
+    
+    if (error) {
+      return NextResponse.json(
+        { error: 'Failed to create metric definition' },
+        { status: 400 }
+      )
+    }
+    
     }
     
     return NextResponse.json({ success: true })

@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react"
 import { ChevronDown, ChevronUp, GripVertical } from "lucide-react"
+import Link from "next/link"
 import {
   Card,
   CardContent,
@@ -125,7 +126,11 @@ export function MetricsSummary({ metrics, clientId, historicalMetrics, onSelectM
             <div className="flex items-center justify-between">
               <CardTitle className="text-blue-600 font-medium flex items-center text-lg">
                 {isOpen ? <ChevronDown className="h-5 w-5 mr-2" /> : <ChevronUp className="h-5 w-5 mr-2" />}
-                All Metrics ({metricsCount})
+                <Link 
+                          href={`/clients/${clientId}/metrics`}
+                          className="text-blue-600 hover:text-blue-800 hover:underline"
+                          onClick={(e) => e.stopPropagation()}
+                        >All Metrics ({metricsCount})</Link>
               </CardTitle>
             </div>
           </CardHeader>
@@ -163,7 +168,15 @@ export function MetricsSummary({ metrics, clientId, historicalMetrics, onSelectM
                       <TableCell className="w-10">
                         <GripVertical className="h-5 w-5 text-gray-400" />
                       </TableCell>
-                      <TableCell className="font-medium py-6">{metric.name}</TableCell>
+                      <TableCell className="font-medium py-6">
+                        <Link 
+                          href={`/clients/${clientId}/metrics?metric=${encodeURIComponent(metric.name.toLowerCase())}`}
+                          className="text-blue-600 hover:text-blue-800 hover:underline"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {metric.name}
+                        </Link>
+                      </TableCell>
                       <TableCell className="py-6">
                         {metric.value ? `${metric.value}${metric.unit ? ` ${metric.unit}` : ''}` : "—"}
                       </TableCell>
