@@ -26,23 +26,25 @@ export async function GET(request: NextRequest) {
     const search = url.searchParams.get('search')
     const is_custom = url.searchParams.get('is_custom')
     
-    // First query: Get all exercises (no filters yet)
+    // Query all exercises (max_rows set to 10000 in config.toml, but we need to explicitly request more than 1000)
     const exercisesQuery = supabase
       .from('exercises')
       .select('*')
-    
+      .range(0, 9999) // Request up to 10000 rows
+
     // Second query: Get user_exercises for current user
     const userExercisesQuery = supabase
       .from('user_exercises')
       .select('*')
       .eq('user_id', authData.user.id)
-    
+      .range(0, 9999) // Request up to 10000 rows
+
     // Execute both queries in parallel
     const [exercisesResult, userExercisesResult] = await Promise.all([
       exercisesQuery,
       userExercisesQuery
     ])
-    
+
     if (exercisesResult.error) {
       console.error('Error fetching exercises:', exercisesResult.error)
       return NextResponse.json(
@@ -50,7 +52,7 @@ export async function GET(request: NextRequest) {
         { status: 400 }
       )
     }
-    
+
     if (userExercisesResult.error) {
       console.error('Error fetching user exercises:', userExercisesResult.error)
       return NextResponse.json(
@@ -58,7 +60,7 @@ export async function GET(request: NextRequest) {
         { status: 400 }
       )
     }
-    
+
     // Combine all exercises from both tables into one dataset
     const allExercises = [
       // Add all exercises from exercises table (mark as non-custom)
@@ -80,13 +82,16 @@ export async function GET(request: NextRequest) {
         is_custom: userExercise.is_custom !== undefined ? userExercise.is_custom : true
       }))
     ]
-    
+
     let exercises = allExercises
-    
+
     console.log(`Total exercises from exercises table: ${exercisesResult.data?.length || 0}`)
     console.log(`Total user_exercises: ${userExercisesResult.data?.length || 0}`)
     console.log(`Total combined exercises: ${exercises.length}`)
-    console.log('Combined exercises:', exercises.map(e => ({ id: e.id, name: e.name, is_user_exercise: e.is_user_exercise })))
+
+    // Check for "stationary bike run" specifically
+    const stationaryBike = exercises.find(e => e.name?.toLowerCase().includes('stationary bike'))
+    console.log('Found stationary bike exercise:', stationaryBike)
     
     // Apply filters on merged data
     if (equipments && equipments !== 'all') {
@@ -127,14 +132,19 @@ export async function GET(request: NextRequest) {
       exercises = exercises.filter(exercise => exercise.is_custom === isCustomBool)
     }
     
+    // Check if stationary bike survived filters
+    const stationaryBikeAfterFilters = exercises.find(e => e.name?.toLowerCase().includes('stationary bike'))
+    console.log('Stationary bike after filters:', stationaryBikeAfterFilters)
+    console.log('Total exercises after filters:', exercises.length)
+
     // Apply sorting
     exercises.sort((a, b) => {
       const aValue = a[sortBy as keyof typeof a]
       const bValue = b[sortBy as keyof typeof b]
-      
+
       if (aValue === null || aValue === undefined) return 1
       if (bValue === null || bValue === undefined) return -1
-      
+
       // Special handling for boolean fields like is_custom
       if (sortBy === 'is_custom') {
         // Convert boolean to number for proper sorting (false = 0, true = 1)
@@ -142,12 +152,12 @@ export async function GET(request: NextRequest) {
         const bNum = bValue ? 1 : 0
         return order === 'asc' ? aNum - bNum : bNum - aNum
       }
-      
+
       if (aValue < bValue) return order === 'asc' ? -1 : 1
       if (aValue > bValue) return order === 'asc' ? 1 : -1
       return 0
     })
-    
+
     return NextResponse.json({ exercises })
     
   } catch (error) {

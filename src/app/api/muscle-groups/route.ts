@@ -16,21 +16,20 @@ export async function GET() {
     }
     
 
-// Get unique muscle groups from both tables
- let query = supabase
-  .from('exercises')
-  .select(`
-    target_muscles,
-    user_exercises!left(
-      target_muscles,
-      user_id
-    )
-  `)
-  .eq('user_exercises.user_id', authData.user.id)
+    // Get unique muscle groups from both tables
+    const { data, error } = await supabase
+      .from('exercises')
+      .select(`
+        target_muscles,
+        user_exercises!left(
+          target_muscles,
+          user_id
+        )
+      `)
+      .eq('user_exercises.user_id', authData.user.id)
+      .range(0, 9999)
 
-  const { data, error } = await query
-
-   if (error) {
+    if (error) {
       console.error('Error fetching muscle groups:', error)
       return NextResponse.json(
         { error: error.message },
@@ -38,35 +37,20 @@ export async function GET() {
       )
     }
 
-  // Process the data to get unique muscle groups
-  const uniqueMuscleGroups = new Set<string>();
+    // Collect unique muscle groups from both exercises and user_exercises
+    const uniqueMuscleGroups = new Set<string>()
 
-  data?.forEach(exercise => {
-    // Add muscle groups from exercises table
-    if (exercise.target_muscles) {
-      if (Array.isArray(exercise.target_muscles)) {
-        exercise.target_muscles.forEach(item => uniqueMuscleGroups.add(item));
-      } else {
-        uniqueMuscleGroups.add(exercise.target_muscles);
-      }
-    }
-    
-    // Add muscle groups from user_exercises
-    exercise.user_exercises?.forEach(userExercise => {
-      if (userExercise.target_muscles) {
-        if (Array.isArray(userExercise.target_muscles)) {
-          userExercise.target_muscles.forEach(item => uniqueMuscleGroups.add(item));
-        } else {
-          uniqueMuscleGroups.add(userExercise.target_muscles);
-        }
-      }
-    });
-  });
-    
-  // Transform data for the table
-  const muscleGroups = Array.from(uniqueMuscleGroups);
+    data?.forEach(exercise => {
+      // Add muscle groups from exercises table
+      exercise.target_muscles?.forEach((muscle: string) => uniqueMuscleGroups.add(muscle))
 
-  return NextResponse.json(muscleGroups); 
+      // Add muscle groups from user_exercises
+      exercise.user_exercises?.forEach(userExercise => {
+        userExercise.target_muscles?.forEach((muscle: string) => uniqueMuscleGroups.add(muscle))
+      })
+    })
+
+    return NextResponse.json(Array.from(uniqueMuscleGroups)) 
     
   } catch (error) {
     console.error('Server error fetching muscle groups:', error)

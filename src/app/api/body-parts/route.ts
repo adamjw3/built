@@ -16,21 +16,20 @@ export async function GET() {
     }
     
 
-// Get unique body parts from both tables
- let query = supabase
-  .from('exercises')
-  .select(`
-    body_parts,
-    user_exercises!left(
-      body_parts,
-      user_id
-    )
-  `)
-  .eq('user_exercises.user_id', authData.user.id)
+    // Get unique body parts from both tables
+    const { data, error } = await supabase
+      .from('exercises')
+      .select(`
+        body_parts,
+        user_exercises!left(
+          body_parts,
+          user_id
+        )
+      `)
+      .eq('user_exercises.user_id', authData.user.id)
+      .range(0, 9999)
 
-  const { data, error } = await query
-
-   if (error) {
+    if (error) {
       console.error('Error fetching body parts:', error)
       return NextResponse.json(
         { error: error.message },
@@ -38,35 +37,20 @@ export async function GET() {
       )
     }
 
-  // Process the data to get unique body parts
-  const uniqueBodyParts = new Set<string>();
+    // Collect unique body parts from both exercises and user_exercises
+    const uniqueBodyParts = new Set<string>()
 
-  data?.forEach(exercise => {
-    // Add body parts from exercises table
-    if (exercise.body_parts) {
-      if (Array.isArray(exercise.body_parts)) {
-        exercise.body_parts.forEach(item => uniqueBodyParts.add(item));
-      } else {
-        uniqueBodyParts.add(exercise.body_parts);
-      }
-    }
-    
-    // Add body parts from user_exercises
-    exercise.user_exercises?.forEach(userExercise => {
-      if (userExercise.body_parts) {
-        if (Array.isArray(userExercise.body_parts)) {
-          userExercise.body_parts.forEach(item => uniqueBodyParts.add(item));
-        } else {
-          uniqueBodyParts.add(userExercise.body_parts);
-        }
-      }
-    });
-  });
-    
-  // Transform data for the table
-  const bodyParts = Array.from(uniqueBodyParts);
+    data?.forEach(exercise => {
+      // Add body parts from exercises table
+      exercise.body_parts?.forEach((part: string) => uniqueBodyParts.add(part))
 
-  return NextResponse.json(bodyParts); 
+      // Add body parts from user_exercises
+      exercise.user_exercises?.forEach(userExercise => {
+        userExercise.body_parts?.forEach((part: string) => uniqueBodyParts.add(part))
+      })
+    })
+
+    return NextResponse.json(Array.from(uniqueBodyParts)) 
     
   } catch (error) {
     console.error('Server error fetching body parts:', error)

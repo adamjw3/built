@@ -16,21 +16,20 @@ export async function GET() {
     }
     
 
-// Get unique equipment from both tables
- let query = supabase
-  .from('exercises')
-  .select(`
-    equipments,
-    user_exercises!left(
-      equipments,
-      user_id
-    )
-  `)
-  .eq('user_exercises.user_id', authData.user.id)
+    // Get unique equipment from both tables
+    const { data, error } = await supabase
+      .from('exercises')
+      .select(`
+        equipments,
+        user_exercises!left(
+          equipments,
+          user_id
+        )
+      `)
+      .eq('user_exercises.user_id', authData.user.id)
+      .range(0, 9999)
 
-  const { data, error } = await query
-
-   if (error) {
+    if (error) {
       console.error('Error fetching equipments:', error)
       return NextResponse.json(
         { error: error.message },
@@ -38,39 +37,20 @@ export async function GET() {
       )
     }
 
-  // Process the data to get unique equipment
-  const uniqueEquipment = new Set<string>();
+    // Collect unique equipment from both exercises and user_exercises
+    const uniqueEquipment = new Set<string>()
 
-  data?.forEach(exercise => {
-    // Add equipment from exercises table
-    if (exercise.equipments) {
-      if (Array.isArray(exercise.equipments)) {
-        exercise.equipments.forEach(item => uniqueEquipment.add(item));
-      } else {
-        uniqueEquipment.add(exercise.equipments);
-      }
-    }
-    
-    // Add equipment from user_exercises
-    exercise.user_exercises?.forEach(userExercise => {
-      if (userExercise.equipments) {
-        if (Array.isArray(userExercise.equipments)) {
-          userExercise.equipments.forEach(item => uniqueEquipment.add(item));
-        } else {
-          uniqueEquipment.add(userExercise.equipments);
-        }
-      }
-    });
-  });
-    
-  // Transform data for the table
-  const equipments = Array.from(uniqueEquipment);
+    data?.forEach(exercise => {
+      // Add equipment from exercises table
+      exercise.equipments?.forEach((equipment: string) => uniqueEquipment.add(equipment))
 
-  console.log("data", data)
+      // Add equipment from user_exercises
+      exercise.user_exercises?.forEach(userExercise => {
+        userExercise.equipments?.forEach((equipment: string) => uniqueEquipment.add(equipment))
+      })
+    })
 
-  console.log("equipments", equipments)
-
-  return NextResponse.json(equipments); 
+    return NextResponse.json(Array.from(uniqueEquipment)) 
     
   } catch (error) {
     console.error('Server error fetching equipments:', error)
